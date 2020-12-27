@@ -13,19 +13,22 @@ public class MyRigidBody : MonoBehaviour
     [SerializeField] public Vector3 Force;
     [SerializeField] public Vector3 Acceleration;
     [SerializeField] public Vector3 Velocity;
+    [SerializeField] public Vector3 AngularMomentum;
     [SerializeField] public Vector3 AngularVelocity;
-    [SerializeField] public Vector3 AngularImpulse;
-    [SerializeField] public Vector3 InertiaTensor;
+    [SerializeField] public float MomentOfInertia;
     [SerializeField] public Vector3 Torque;
     [SerializeField] public Vector3 Gravity;
     [SerializeField] public float Radius;
     [SerializeField] public float Area;
-    [SerializeField] private float k1;
-    [SerializeField] private float k2;
-    [SerializeField] private float k3;
-    [SerializeField] private float k4;
+    [SerializeField] private float k1 = 0f;
+    [SerializeField] private float k2 = 0f;
+    [SerializeField] private float k3 = 0f;
+    [SerializeField] private float k4 = 0f;
     [SerializeField] public float FluidDensity = 1.229f;
     [SerializeField] public bool useGravity;
+    float Xn;
+    float Yn;
+    float Zn;
 
     // Start is called before the first frame update
     void Start()
@@ -44,6 +47,10 @@ public class MyRigidBody : MonoBehaviour
             Area = CalcArea();
         }
 
+        Xn = this.transform.position.x;
+        Yn = this.transform.position.y;
+        Zn = this.transform.position.z;
+        MomentOfInertia = 0.4f * Mass * (Radius * Radius);
         AddForce(Impulse);
     }
 
@@ -64,13 +71,20 @@ public class MyRigidBody : MonoBehaviour
                 RK4(Acceleration.y * Time.deltaTime),
                 RK4(Acceleration.z * Time.deltaTime));
 
-            this.transform.position += Velocity;
+            //this.transform.position += Velocity;
+
+            Xn = this.transform.position.x + Acceleration.x * Time.deltaTime;
+            Yn = this.transform.position.y + Acceleration.y * Time.deltaTime;
+            Zn = this.transform.position.z + Acceleration.z * Time.deltaTime;
+            this.transform.position = new Vector3(RK4(Xn), RK4(Yn), RK4(Zn));
+            //this.transform.SetPositionAndRotation(new Vector3(RK4(Xn), RK4(Yn), RK4(Zn)), Quaternion.identity);
         }
+
+
 
         #endregion
         #region Angular Velocity
-
-
+        this.transform.Rotate(AngularMomentum);
 
         #endregion
     }
@@ -81,10 +95,10 @@ public class MyRigidBody : MonoBehaviour
     float RK4(float argAxisForce)
     {
 
-        k1 = Time.deltaTime * dydt(Time.time, argAxisForce);
-        k2 = Time.deltaTime * dydt(Time.time + (0.5f * Time.deltaTime), argAxisForce + (Time.deltaTime * (0.5f * k1)));
-        k3 = Time.deltaTime * dydt(Time.time + (0.5f * Time.deltaTime), argAxisForce + (Time.deltaTime * (0.5f * k2)));
-        k4 = Time.deltaTime * dydt(Time.time + Time.deltaTime, argAxisForce + (Time.deltaTime * k3));
+        k1 = Time.deltaTime * dydt(Time.time, argAxisForce); //eulers method
+        k2 = Time.deltaTime * dydt(Time.time + 0.5f * Time.deltaTime, argAxisForce * 0.5f * k1); //mid foint of force and k1
+        k3 = Time.deltaTime * dydt(Time.time + 0.5f * Time.deltaTime, argAxisForce * 0.5f * k2); //slope of y and k2
+        k4 = Time.deltaTime * dydt(Time.time + Time.deltaTime, argAxisForce * k3); //slope of y and k3
 
         return (argAxisForce += ((1f / 6f) * Time.deltaTime) * (k1 + (2f * k2) + (2f * k3) + k4));
     }
@@ -92,19 +106,29 @@ public class MyRigidBody : MonoBehaviour
     float dydt(float argT, float argY)
     {
         if (argT == 0) argT = 1; //fix for initial update tick where Time.time == 0
-        return (argY / argT);
+        return (argY * argY - argT * argT) / (argY * argY  + argT * argT);
+    }
+    float dydx(float x, float y)
+    {
+        if (x == 0) x = 1;
+        return (x - y) / 2;
     }
 
     void CalcDrag()
     {
         Drag = -Force.normalized * (0.5f * DragCoef * (Area / 2) * FluidDensity * Force.sqrMagnitude) * Time.deltaTime;
     }
+    void CalcAngularDrag()
+    {
+        
+    }
     public void AddForce(Vector3 argForce)
     {
         Force += (argForce);
     }
-    public void AddAngularForce(Vector3 argForce)
+    public void AddTorque(float argForce, Vector3 argDir)
     {
+        AngularMomentum += MomentOfInertia * (argForce * argDir);
        // Vector3 Vperp = Vector3.Dot(this.Velocity, other.velocity); //find the tangeant of the 
        // Torque += argForce * Radius * Mathf.Sin(Vector3.Angle(this.Velocity, Vperp));
     }

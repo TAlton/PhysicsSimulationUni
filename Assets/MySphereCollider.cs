@@ -6,7 +6,7 @@ public class MySphereCollider : MonoBehaviour
 {
     [SerializeField] public float Radius;
     [SerializeField] private float Area;
-    [SerializeField] private Vector3 PointOfContact;
+    [SerializeField] public Vector3 PointOfContact;
     [SerializeField] private float ThetaContact;
 
 
@@ -43,13 +43,14 @@ public class MySphereCollider : MonoBehaviour
         float SumOfRadii = (other.GetComponent<MySphereCollider>().Radius) + Radius; //if they both have a radius var we can access other.radius instead
         float DistanceOfEdges = DistanceOfCenters - SumOfRadii;
         MyRigidBody rb = gameObject.GetComponent<MyRigidBody>();
+        MyRigidBody OtherRB = other.GetComponent<MyRigidBody>();
 
-        if (rb.Velocity.magnitude < DistanceOfEdges) //if the distance of the two closest edges of the sphere is more than the magnitude of the velocity they will not collide
+        if (rb.Velocity.magnitude - OtherRB.Velocity.magnitude < DistanceOfEdges) //if the distance of the two closest edges of the sphere is more than the magnitude of the velocity they will not collide
         {
             return false;
         }
 
-        Vector3 NormVec = rb.Velocity.normalized;
+        Vector3 NormVec = (rb.Velocity - OtherRB.Velocity).normalized;
 
         Vector3 DistCenter = other.transform.position - this.transform.position;
         float D = Vector3.Dot(NormVec, DistCenter);
@@ -70,7 +71,7 @@ public class MySphereCollider : MonoBehaviour
         float Magn = rb.Velocity.magnitude * Time.deltaTime; //the magnitude of the vector in this frame
 
         if (Magn < Dist) return false; //check if the magnitude is less than the distance so we are sure they collide in this update frame
-        rb.Velocity = rb.Velocity.normalized;
+        //rb.Velocity = rb.Velocity.normalized;
         this.transform.position += Dist * rb.Velocity.normalized;
         float dx = 0.5f * (this.transform.position.x + other.transform.position.x);
         float dy = 0.5f * (this.transform.position.y + other.transform.position.y);
