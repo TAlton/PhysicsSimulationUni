@@ -39,6 +39,7 @@ public class MySphereCollider : MonoBehaviour
 
     public bool hasCollided(GameObject other) //the biggest error in this is the resolution of the default unity sphere
     {
+
         float DistanceOfCenters = (this.transform.position - other.transform.position).magnitude;
         float SumOfRadii = (other.GetComponent<MySphereCollider>().Radius) + Radius; //if they both have a radius var we can access other.radius instead
         float DistanceOfEdges = DistanceOfCenters - SumOfRadii;

@@ -1,9 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.Tracing;
 using UnityEngine;
 
 public class MyRigidBody : MonoBehaviour
 {
+
+    public enum State { Slide, Stationary, Move }
     [SerializeField] public float Mass;
     [SerializeField] public float DragCoef = 0.47f;
     [SerializeField] public float AngularDrag;
@@ -26,9 +29,13 @@ public class MyRigidBody : MonoBehaviour
     [SerializeField] private float k4 = 0f;
     [SerializeField] public float FluidDensity = 1.229f;
     [SerializeField] public bool useGravity;
+    [SerializeField] private State eState;
+
     float Xn;
     float Yn;
     float Zn;
+
+
 
     // Start is called before the first frame update
     void Start()
@@ -59,24 +66,26 @@ public class MyRigidBody : MonoBehaviour
     {
         Debug.DrawLine(this.transform.position, (this.transform.position + this.Velocity.normalized));
 
+        if (eState == State.Stationary) return;
+
         #region Linear Velocity
 
-        if (useGravity) AddForce(Gravity * Time.deltaTime);
+        if (useGravity) AddForce((Gravity * Time.deltaTime));
         AddForce(Drag * Time.deltaTime);
         CalcDrag();
-        if (Mathf.Abs(Force.magnitude) > 0.05f)
+       // if (Mathf.Abs(Force.magnitude) > 0.05f)
         {
             Acceleration = Force / Mass;
             Velocity = new Vector3(RK4(Acceleration.x * Time.deltaTime),
                 RK4(Acceleration.y * Time.deltaTime),
                 RK4(Acceleration.z * Time.deltaTime));
 
-            //this.transform.position += Velocity;
+            this.transform.position += Velocity;
 
-            Xn = this.transform.position.x + Acceleration.x * Time.deltaTime;
-            Yn = this.transform.position.y + Acceleration.y * Time.deltaTime;
-            Zn = this.transform.position.z + Acceleration.z * Time.deltaTime;
-            this.transform.position = new Vector3(RK4(Xn), RK4(Yn), RK4(Zn));
+            //Xn = this.transform.position.x + Acceleration.x * Time.deltaTime;
+            //Yn = this.transform.position.y + Acceleration.y * Time.deltaTime;
+            //Zn = this.transform.position.z + Acceleration.z * Time.deltaTime;
+            //this.transform.position = new Vector3(RK4(Xn), RK4(Yn), RK4(Zn));
             //this.transform.SetPositionAndRotation(new Vector3(RK4(Xn), RK4(Yn), RK4(Zn)), Quaternion.identity);
         }
 
@@ -84,6 +93,7 @@ public class MyRigidBody : MonoBehaviour
 
         #endregion
         #region Angular Velocity
+
         this.transform.Rotate(AngularMomentum);
 
         #endregion
@@ -124,13 +134,27 @@ public class MyRigidBody : MonoBehaviour
     }
     public void AddForce(Vector3 argForce)
     {
-        Force += (argForce);
+        eState = State.Move;
+        Force += (argForce * Mass);
     }
     public void AddTorque(float argForce, Vector3 argDir)
     {
+        eState = State.Move;
         AngularMomentum += MomentOfInertia * (argForce * argDir);
        // Vector3 Vperp = Vector3.Dot(this.Velocity, other.velocity); //find the tangeant of the 
        // Torque += argForce * Radius * Mathf.Sin(Vector3.Angle(this.Velocity, Vperp));
+    }
+    public State getState()
+    {
+        if (Mathf.Abs(this.Force.x) < 0.0075f &&
+            Mathf.Abs(this.Force.y) < 0.0075f &&
+            Mathf.Abs(this.Force.z) < 0.0075f)
+        {
+            eState = State.Stationary;
+            return eState;
+        }
+
+        return eState;
     }
 
 }
